@@ -112,6 +112,25 @@ questions:
     default: "github.com/kamalyes/kronos-share-proto-template"
     required: true
 
+  # gRPC 服务的完整名由协议中心的 proto package 决定，不是本模板能自己定的。
+  # 它只用在 README 的 grpcurl 示例里——但那是别人拿到项目后第一个会试的命令，
+  # 填错的话命令直接报 "service not found"，而排查方向会歪到 reflection 上。
+  #
+  # 必须与协议中心的 ProtoPackage 一致。默认值对应 ShareProtoModule 默认指向的
+  # kronos-share-proto-template（它的 ProtoPackage 是 kronos.api）。
+  # 换成自己的协议中心时这里要跟着改。
+  #
+  # [EN] A gRPC service's fully-qualified name comes from the contract hub's proto package
+  # rather than anything this template decides. It appears only in the README's grpcurl
+  # examples, but those are the first thing someone tries, and a wrong value fails with
+  # "service not found" and sends the investigation towards reflection instead. It must match
+  # the hub's own ProtoPackage; the default matches the hub that ShareProtoModule points at.
+  - name: ProtoPackage
+    prompt: "协议中心的 proto package（grpcurl 示例用）| The contract hub's proto package"
+    type: string
+    default: "kronos.api"
+    required: true
+
   - name: ShareProtoVersion
     prompt: "协议中心依赖版本（分支名 / tag / latest）| Contract-hub version"
     type: string
@@ -160,6 +179,15 @@ questions:
 # 忽略 | Ignore
 # ============================================================================
 ignore:
+  # verify-template.yml 只服务于模板仓库自己（渲染自身并发布 build 分支），
+  # 生成出来的项目不需要它——那边没有 kopy.yaml，渲染步骤必然失败。
+  # 不排除的话每个生成仓库都会多一个永远红叉的工作流。
+  #
+  # [EN] verify-template.yml serves only the template repository, which renders itself and
+  # publishes the build branch. A generated project has no kopy.yaml, so its render step would
+  # always fail, and leaving it in gives every generated repository a permanently failing
+  # workflow.
+  - ".github/workflows/verify-template.yml"
   - "kopy.yaml"
   - "__kopy_template_doc__"
   - ".git/"
