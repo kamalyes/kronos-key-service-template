@@ -1,0 +1,194 @@
+# ============================================================================
+# kronos-key-service-template
+#
+# 一个「中心发号/发密钥」服务的模板：实现协议中心 key 模块的两个 service
+#   TempKeyService  按租户 + 场景签发一次性 RSA 密钥对，私钥只留服务端
+#   IdBlockService  按命名空间集中发放 ID 号段，调用方本地缓冲后逐个发放
+#
+# 与 kronos-service-template 的区别：那个是「有库有缓存的业务服务」模板，
+# 这个是「无库、只依赖 Redis 的基础设施服务」模板——没有 gorm、sqlbuilder、
+# pbmo、migrations，也没有示例实体开关。
+#
+# [EN] A template for a central issuer service implementing the two services of the contract
+# hub's key module. Unlike kronos-service-template, which scaffolds a business service with a
+# database and caches, this one has no database at all and depends only on Redis, so it ships
+# no gorm, sqlbuilder, pbmo or migrations and has no example-entity toggle.
+#
+# 依赖的 kopy 行为（旧版本会静默出错）：
+#   1. ignore 对「rename 之后」的路径生效
+#   2. default 里可以引用别的变量
+#   3. hooks.after 会被执行
+#
+# [EN] Relies on three kopy behaviours that older builds lack: ignore matching renamed paths,
+# cross-referencing variables in defaults, and hooks actually running.
+# ============================================================================
+
+name: kronos-key-service-template
+description: "中心密钥与发号服务模板（临时 RSA 密钥 + ID 号段分发）| Central key and id issuer service template"
+delimiters: ["<%", "%>"]
+
+questions:
+  - name: OrgName
+    prompt: "GitHub 组织名 | GitHub organization"
+    type: string
+    default: kamalyes
+    required: true
+
+  - name: ObjectPrefix
+    prompt: "项目前缀（用于项目名与命名空间）| Project prefix"
+    type: string
+    default: kronos
+    required: true
+
+  - name: ServiceType
+    prompt: "服务类型标识 | Service type identifier"
+    type: string
+    default: key
+    required: true
+
+  - name: ServiceName
+    prompt: "服务名称（PascalCase）| Service name in PascalCase"
+    type: string
+    default: "<% .ServiceType | pascal %>Service"
+    required: true
+
+  - name: ModuleName
+    prompt: "模块名称（小写）| Module name, lower case"
+    type: string
+    default: "<% .ServiceType %>-service"
+    required: true
+
+  - name: ProjectName
+    prompt: "项目名称（同时是配置文件前缀）| Project name, also the config prefix"
+    type: string
+    default: "<% .ObjectPrefix %>-<% .ServiceType %>-service"
+    required: true
+
+  - name: GoVersion
+    prompt: "Go 版本 | Go version"
+    type: select
+    choices: ["1.22", "1.23", "1.24", "1.25"]
+    default: "1.25"
+
+  - name: AuthorName
+    prompt: "作者名称 | Author name"
+    type: string
+    default: kamalyes
+    required: true
+
+  - name: AuthorEmail
+    prompt: "作者邮箱 | Author email"
+    type: string
+    default: example@qq.com
+    required: true
+
+  - name: BaseBranch
+    prompt: "主干分支名 | Trunk branch"
+    type: string
+    default: master
+    required: true
+
+  - name: AiAssistant
+    prompt: "AI 规范目录 | AI convention directory"
+    type: select
+    choices: [".trae", ".claude", ".cursor", ".vscode"]
+    default: ".trae"
+
+  # --------------------------------------------------------------------------
+  # 协议中心 | Contract hub
+  # --------------------------------------------------------------------------
+  - name: ShareProtoModule
+    prompt: "协议中心 Go 模块路径 | Go module path of the contract hub"
+    type: string
+    # 默认指向协议模板的 build 分支，与 kronos-service-template 同源。
+    # master 全是占位符不是合法 Go，build 分支是它的 CI 渲染 + 生成 + 验证后的产物。
+    # 两个服务模板指向同一个分支，所以 key 模块的定义天然一致，
+    # 不需要人工保持两份 proto 同步。
+    #
+    # [EN] Points at the contract-hub template's build branch, the same source as the service
+    # template. Its master is placeholders rather than valid Go, while build is what its CI
+    # renders, generates and verifies. Both service templates consume one branch, so the key
+    # module's definition is identical by construction.
+    default: "github.com/kamalyes/kronos-share-proto-template"
+    required: true
+
+  - name: ShareProtoVersion
+    prompt: "协议中心依赖版本（分支名 / tag / latest）| Contract-hub version"
+    type: string
+    default: "build"
+    required: true
+
+  # --------------------------------------------------------------------------
+  # 运行参数 | Runtime
+  # --------------------------------------------------------------------------
+  - name: GRPCPort
+    prompt: "gRPC 端口 | gRPC port"
+    type: string
+    default: "9290"
+    required: true
+
+  - name: HTTPPort
+    prompt: "HTTP 端口 | HTTP port"
+    type: string
+    default: "8290"
+    required: true
+
+  - name: HealthPort
+    prompt: "健康检查端口 | Health check port"
+    type: string
+    default: "8291"
+    required: true
+
+  - name: RedisDB
+    prompt: "Redis 库编号 | Redis database index"
+    type: string
+    # 和业务服务分开一个库：密钥与号段是基础设施数据，
+    # 和业务缓存混在一个库里，任何一次业务侧的 FLUSHDB 都会把密钥一起清掉。
+    # [EN] A separate database from the business services: keys and sequences are
+    # infrastructure data, and sharing a database means any FLUSHDB on the business side
+    # wipes the keys too
+    default: "3"
+    required: true
+
+  - name: PipelineRepo
+    prompt: "复用型工作流仓库 | Reusable-workflow repository"
+    type: string
+    default: kamalyes/deploy-pipeline
+    required: true
+
+# ============================================================================
+# 忽略 | Ignore
+# ============================================================================
+ignore:
+  - "kopy.yaml"
+  - "__kopy_template_doc__"
+  - ".git/"
+  - ".git/**"
+  - ".DS_Store"
+  - "go.sum"
+
+# ============================================================================
+# 重命名 | Rename
+# ============================================================================
+rename:
+  - pattern: ".yml.tpl"
+    value: ".yml"
+  - pattern: "README.md"
+    value: "__kopy_template_doc__"
+  - pattern: "readme-en.tpl"
+    value: "README.en.md"
+  - pattern: "readme.tpl"
+    value: "README.md"
+  - pattern: "__ai_home__"
+    value: "<% .AiAssistant %>"
+  - pattern: "__project_name__"
+    value: "<% .ProjectName %>"
+  - pattern: "__module_name__"
+    value: "<% .ModuleName %>"
+
+# ============================================================================
+# 生命周期钩子 | Lifecycle hooks
+# ============================================================================
+hooks:
+  after:
+    - bash scripts/init.sh
