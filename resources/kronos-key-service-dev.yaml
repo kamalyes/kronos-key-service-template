@@ -1,0 +1,384 @@
+# =====================================================================
+# KeyService Service - Gateway 配置（本地开发）
+# 文件名约定: kronos-key-service-{environment}.yaml
+# =====================================================================
+
+module-name: gateway
+name: "KeyService Service Gateway (dev)"
+enabled: true
+debug: true
+version: "v1.0.0"
+environment: "dev"
+
+# ===========================================
+# JSON 序列化
+# ===========================================
+json:
+    use-proto-names: true
+    emit-unpopulated: true
+    discard-unknown: true
+
+# ===========================================
+# HTTP Server (gRPC-Gateway)
+# ===========================================
+http:
+    module-name: server
+    host: "0.0.0.0"
+    port: 8290
+    network: tcp4
+    read-timeout: 30
+    read-header-timeout: 5
+    write-timeout: 30
+    idle-timeout: 60
+    max-header-bytes: 1048576
+    enable-tls: false
+    tls:
+        cert-file: ""
+        key-file: ""
+        ca-file: ""
+    headers:
+        x-server: keyservice
+    enable-gzip-compress: true
+    gzip-compression-level: 5
+    gzip-min-size: 1024
+    enable-http2: true
+    http2:
+        max-concurrent-streams: 250
+        max-read-frame-size: 1048576
+        initial-window-size: 1048576
+        initial-conn-window-size: 2097152
+
+# ===========================================
+# gRPC Server
+# ===========================================
+grpc:
+    server:
+        enable: true
+        host: "0.0.0.0"
+        port: 9290
+        network: tcp4
+        max-recv-msg-size: 4194304
+        max-send-msg-size: 4194304
+        keepalive-time: 120
+        keepalive-timeout: 10
+        connection-timeout: 20
+        enable-reflection: true
+    # 本服务是叶子服务，没有下游 gRPC 依赖，所以 clients 为空
+    #
+    # 它被别人调用（kronos-service-template 的 ID 号段分发就调 IdBlockAllocate），
+    # 但自己不调别人。基础设施服务保持叶子状态是有意的：发号/发密钥若反过来
+    # 依赖业务服务，就会形成环，任一侧重启都可能把对方拖住。
+    #
+    # [EN] A leaf service with no downstream gRPC dependency, so clients is empty. It is called
+    # by others — the service template's id block allocation calls IdBlockAllocate — but calls
+    # nobody. Keeping an issuer service a leaf is deliberate: depending back on a business
+    # service would close a cycle in which either side's restart can stall the other.
+    clients: {}
+# ===========================================
+# 缓存（Redis）
+# ===========================================
+cache:
+    module-name: cache
+    type: redis
+    enabled: true
+    default-ttl: 24h
+    key-prefix: 'kronos-key-service:'
+    serializer: json
+    memory:
+        module-name: memory
+        capacity: 1000
+        default-ttl: 30m0s
+        cleanup-size: 100
+        max-size: 0
+    redis:
+        module-name: redis
+        addr: localhost:6379
+        addrs:
+            - localhost:6379
+        password: ""
+        db: 3
+        max-retries: 3
+        pool-size: 10
+        min-idle-conns: 0
+        max-conn-age: 30m
+        pool-timeout: 4s
+        idle-timeout: 5m
+        read-timeout: 3s
+        write-timeout: 3s
+        cluster-mode: false
+# ===========================================
+# 本服务没有 database 段
+#
+# 临时密钥只存 Redis 并随 TTL 过期，ID 序列只需要一个原子自增，两者都不落库。
+# 落库要配迁移、备份和清理任务，而数据库备份里躺着一堆 RSA 私钥本身就是风险——
+# 备份的保留期通常远长于这些密钥该存在的时间。
+#
+# [EN] No database section. Temporary keys live in Redis under a TTL and the id sequence only
+# needs an atomic increment, so neither is persisted. A table would need migrations, backups
+# and a cleanup job, and a backup full of RSA private keys is itself a risk, since backups are
+# retained far longer than these keys should exist.
+# ===========================================
+
+health:
+    module-name: health
+    enabled: true
+    path: /health
+    port: 8291
+    timeout: 30
+    redis:
+        enabled: false
+        path: /health/redis
+        timeout: 5
+    mysql:
+        enabled: false
+        path: /health/mysql
+        timeout: 5
+
+# ===========================================
+# 监控
+# ===========================================
+monitoring:
+    module-name: monitoring
+    enabled: true
+    metrics:
+        enabled: true
+        request-count: true
+        duration: true
+        response-size: true
+        request-size: true
+        buckets: [0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120]
+        enable-open-metrics: false
+        custom-metrics: []
+    alerting:
+        enabled: false
+        rules: []
+        webhooks: []
+
+# ===========================================
+# 安全
+# ===========================================
+security:
+    module-name: security
+    enabled: false
+    csp:
+        enabled: true
+        mode: development
+        custom: ""
+
+# ===========================================
+# 请求上下文
+# ===========================================
+request-context:
+    authorization-sources:
+        - { type: header, key: Authorization }
+        - { type: query, key: authorization }
+    request-id-sources:
+        - { type: header, key: X-Request-Id }
+    trace-id-sources:
+        - { type: header, key: X-Trace-Id }
+    real-ip-sources:
+        - { type: header, key: X-Real-IP }
+    forwarded-for-sources:
+        - { type: header, key: X-Forwarded-For }
+    forwarded-proto-sources:
+        - { type: header, key: X-Forwarded-Proto }
+    client-id-sources:
+        - { type: header, key: X-Client-ID }
+    user-id-sources:
+        - { type: header, key: X-User-ID }
+    tenant-id-sources:
+        - { type: header, key: X-Tenant-ID }
+    timezone-sources:
+        - { type: header, key: X-Timezone }
+
+# ===========================================
+# 中间件
+# ===========================================
+middleware:
+    module-name: middleware
+    enabled: true
+    logging:
+        module-name: logging
+        enabled: true
+        level: debug
+        format: json
+        output: console
+        file-path: ""
+        max-size: 100
+        max-backups: 3
+        max-age: 28
+        compress: true
+        skip-paths:
+            - /health
+            - /metrics
+            - /favicon.ico
+            - /ping
+            - /readiness
+            - /liveness
+        enable-request: true
+        enable-response: true
+        max-body-size: 4096
+        sensitive-mask: "***REDACTED***"
+        sensitive-keys:
+            - password
+            - passwd
+            - token
+            - access_token
+            - refresh_token
+            - secret
+            - authorization
+            - api_key
+            - apikey
+        loggable-content-types:
+            - application/json
+            - application/xml
+            - application/x-www-form-urlencoded
+            - text/
+    recovery:
+        module-name: recovery
+        enabled: true
+        enable-stack: true
+        stack-size: 4096
+        enable-debug: true
+        error-message: 服务器内部错误
+        log-level: error
+        enable-notify: false
+        print-stack: true
+    metrics:
+        module-name: metrics
+        enabled: true
+        path: /metrics
+        namespace: key
+        subsystem: gateway
+        skip-paths: [/health, /metrics, /swagger, /debug/pprof]
+        buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0]
+        request-count: true
+        duration: true
+        request-size: true
+        response-size: true
+    request-id:
+        module-name: requestid
+        enabled: true
+        header-name: X-Request-ID
+        generator: uuid
+    i18n:
+        module-name: i18n
+        enabled: true
+        default-language: en
+        supported-languages: [en, zh]
+        language-mapping:
+            en-us: en
+            zh-cn: zh
+            zh-tw: zh
+        resolution-order: [standard]
+        detection-order: [header]
+        language-param: lang
+        language-header: Accept-Language
+        messages-path: ./locales
+        custom-message-paths: {}
+        enable-fallback: true
+        cookie-name: language
+    pprof:
+        module-name: PProf
+        enabled: false
+        path-prefix: /debug/pprof
+        port: 6160
+        enable-profiles:
+            cpu: true
+            memory: true
+            goroutine: true
+            heap: true
+            allocs: true
+        sampling:
+            cpu-rate: 100
+            memory-rate: 524288
+            block-rate: 1
+            mutex-fraction: 1
+        authentication:
+            enabled: false
+        gateway:
+            enabled: false
+        web-interface:
+            enabled: true
+            title: PProf
+            description: Go Performance Profiling
+            show-scenarios: true
+    circuit-breaker:
+        module-name: circuit_breaker
+        enabled: false
+        failure-threshold: 5
+        success-threshold: 2
+        timeout: 30000000000
+        volume-threshold: 10
+        sliding-window-size: 100
+        sliding-window-bucket: 1000000000
+        prevention-paths: [/api/]
+        exclude-paths: [/health, /metrics, /debug]
+    signature:
+        module-name: signature
+        enabled: false
+        type: hmac
+        secret-key: "change-me-in-production"
+        nonce-key-prefix: 'nonce:'
+        nonce-ttl: 10m
+        require-timestamp: false
+        require-nonce: false
+        algorithm: SHA256
+        timeout-window: 5m
+        ignore-paths: [/health, /metrics, /ping, /swagger, /debug/pprof]
+        skip-query: false
+        skip-body: false
+    alerting:
+        module-name: alerting
+        enabled: false
+        webhooks: []
+        channels: []
+
+# ===========================================
+# CORS
+# ===========================================
+cors:
+    module-name: cors
+    allowed-origins: ['*']
+    allowed-methods: [GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD]
+    allowed-headers:
+        - '*'
+        - Authorization
+        - Content-Type
+        - X-Request-ID
+        - X-Trace-ID
+        - X-User-ID
+        - X-Tenant-ID
+        - Origin
+        - Accept
+        - Accept-Language
+    max-age: "86400"
+    allowed-all-origins: true
+    allowed-all-methods: true
+    exposed-headers: [X-Request-ID, X-Trace-ID, Content-Length, Content-Type]
+    allow-credentials: false
+    options-response-code: 204
+
+# ===========================================
+# 限流
+# ===========================================
+rate-limit:
+    module-name: ratelimit
+    enabled: true
+    strategy: token-bucket
+    default-scope: global
+    global-limit:
+        requests-per-second: 1000
+        burst-size: 2000
+        window-size: 1m0s
+        block-duration: 1m0s
+    routes: []
+    ip-rules: []
+    user-rules: []
+    storage:
+        type: memory
+        key-prefix: 'rate_limit:'
+        clean-interval: 1m
+        redis: null
+    custom-rule-loader: ""
+    enable-dynamic-rule: false
