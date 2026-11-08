@@ -111,7 +111,7 @@ The refusal lives in the code rather than in not exposing the route at deploy ti
 
 Temporary keys live in Redis under a TTL and the id sequence only needs an atomic increment, so neither is persisted. A table would need migrations, backups and a cleanup job, and **a backup full of RSA private keys is itself a risk** — backups are retained far longer than these keys should exist.
 
-This template therefore ships no `gorm`, `go-sqlbuilder`, `go-pbmo` or `migrations`.
+This template therefore ships no `gorm`, `go-sqlbuilder`, `go-toolbox/pkg/pbmo` or `migrations`.
 
 ## Who calls it
 

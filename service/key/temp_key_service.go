@@ -21,7 +21,7 @@ import (
 	"github.com/<% .OrgName %>/<% .ProjectName %>/service/common"
 	pb "<% .ShareProtoModule %>/pb/key"
 	enumspb "<% .ShareProtoModule %>/pb/enums"
-	goconfig "github.com/kamalyes/go-config"
+	goconfig "github.com/kamalyes/go-rpc-gateway/config"
 	gwglobal "github.com/kamalyes/go-rpc-gateway/global"
 	"github.com/kamalyes/go-toolbox/pkg/sign"
 )

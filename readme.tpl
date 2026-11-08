@@ -111,7 +111,7 @@ RSA 生成是纯 CPU 工作：2048 位几十毫秒，4096 位几百毫秒到秒�
 
 临时密钥只存 Redis 并随 TTL 过期，ID 序列只需要一个原子自增，两者都不落库。落库要配迁移、备份和清理任务，而**数据库备份里躺着一堆 RSA 私钥本身就是风险**——备份的保留期通常远长于这些密钥该存在的时间。
 
-所以这个模板不带 `gorm` / `go-sqlbuilder` / `go-pbmo` / `migrations`。
+所以这个模板不带 `gorm` / `go-sqlbuilder` / `go-toolbox/pkg/pbmo` / `migrations`。
 
 ## 谁在调它
 

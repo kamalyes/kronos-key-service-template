@@ -13,7 +13,7 @@ package common
 import (
 	"context"
 
-	bizerror "github.com/kamalyes/go-bizerror"
+	gwerrors "github.com/kamalyes/go-rpc-gateway/errors"
 	gwmiddleware "github.com/kamalyes/go-rpc-gateway/middleware"
 )
 
@@ -33,19 +33,19 @@ import (
 func TenantOf(ctx context.Context) (string, error) {
 	tenantID := gwmiddleware.GetTenantID(ctx)
 	if tenantID == "" {
-		return "", bizerror.ToGRPCError(ctx, bizerror.BizErrCodeUnauthenticated)
+		return "", gwerrors.ToGRPCError(ctx, gwerrors.BizErrCodeUnauthenticated)
 	}
 	return tenantID, nil
 }
 
 // InvalidParam 参数非法
 func InvalidParam(ctx context.Context) error {
-	return bizerror.ToGRPCError(ctx, bizerror.BizErrCodeInvalidParameter)
+	return gwerrors.ToGRPCError(ctx, gwerrors.BizErrCodeInvalidParameter)
 }
 
 // NotFound 资源不存在
 func NotFound(ctx context.Context) error {
-	return bizerror.ToGRPCError(ctx, bizerror.BizErrCodeNotFound)
+	return gwerrors.ToGRPCError(ctx, gwerrors.BizErrCodeNotFound)
 }
 
 // Internal 服务端内部错误
@@ -66,5 +66,5 @@ func NotFound(ctx context.Context) error {
 // The exception is a genuine absence that is useful and safe to report, chosen explicitly at
 // the call site.
 func Internal(ctx context.Context) error {
-	return bizerror.ToGRPCError(ctx, bizerror.BizErrCodeInternalError)
+	return gwerrors.ToGRPCError(ctx, gwerrors.BizErrCodeInternalError)
 }
