@@ -1,8 +1,8 @@
 /*
  * @Author: kamalyes example@qq.com
- * @Date: 2026-10-30 00:00:00
+ * @Date: 2026-11-08 00:00:00
  * @LastEditors: kamalyes example@qq.com
- * @LastEditTime: 2026-10-30 00:00:00
+ * @LastEditTime: 2026-11-08 00:00:00
  * @FilePath: \kronos-key-service\bootstrap\server.go
  * @Description: 服务启动引导
  *
@@ -16,7 +16,7 @@ import (
 	"github.com/kamalyes/kronos-key-service/constants"
 	"github.com/kamalyes/kronos-key-service/repository"
 	keysvc "github.com/kamalyes/kronos-key-service/service/key"
-	goconfig "github.com/kamalyes/go-config"
+	goconfig "github.com/kamalyes/go-rpc-gateway/config"
 	gateway "github.com/kamalyes/go-rpc-gateway"
 	gwglobal "github.com/kamalyes/go-rpc-gateway/global"
 )
