@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/kamalyes/go-cachex v0.6.0
-	github.com/kamalyes/go-rpc-gateway v1.10.2-0.20261108111703-b334243a8027
+	github.com/kamalyes/go-rpc-gateway v1.10.2-0.20261108113725-d288a36ccd0b
 	github.com/kamalyes/go-toolbox v0.19.4
 	github.com/redis/go-redis/v9 v9.22.0
 	google.golang.org/grpc v1.84.0
@@ -105,13 +105,13 @@ require (
 	gorm.io/gorm v1.31.2 // indirect
 )
 
-// 这个服务不连数据库，所以没有 gorm / go-sqlbuilder / go-pbmo
+// 这个服务不连数据库，所以没有 gorm / go-sqlbuilder / go-toolbox/pkg/pbmo
 //
 // 临时密钥只存 Redis 并随 TTL 过期：落库毫无意义——私钥的生命周期是分钟级，
 // 建一张表要配迁移、备份、清理任务，而备份里躺着一堆私钥本身就是个风险。
 // ID 号段同理，序列只需要一个原子自增，Redis 的 INCRBY 正好。
 //
-// [EN] No gorm, go-sqlbuilder or go-pbmo, because this service has no database. A temporary
+// [EN] No gorm, go-sqlbuilder or go-toolbox/pkg/pbmo, because this service has no database. A temporary
 // private key lives for minutes and belongs in Redis under a TTL; a table would need
 // migrations, backups and a cleanup job, and a backup full of private keys is itself a risk.
 // An id sequence only needs an atomic increment, which is what Redis INCRBY is.

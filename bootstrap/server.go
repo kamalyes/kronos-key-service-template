@@ -41,13 +41,13 @@ func NewKeyServiceGateway() *KeyServiceGateway {
 func (s *KeyServiceGateway) Run() error {
 	// 配置前缀取 constants.ServiceName，不写字面量
 	//
-	// go-config 按 <前缀>-<环境别名>.yaml 匹配，所以前缀和 resources/ 下的文件名
+	// go-rpc-gateway/config 按 <前缀>-<环境别名>.yaml 匹配，所以前缀和 resources/ 下的文件名
 	// 必须一致。两处各写一个字符串的话，改了一处忘了另一处就是启动即崩：
 	//   ❌ 未找到前缀为 'xxx' 的配置文件
 	// 而这个报错只在真正启动时出现，编译期毫无提示。都从同一个常量来，
 	// 结构上就不可能分叉——resources/ 下的文件名也由同一个 kopy 变量渲染。
 	//
-	// [EN] go-config matches <prefix>-<env alias>.yaml, so the prefix and the file name under
+	// [EN] go-rpc-gateway/config matches <prefix>-<env alias>.yaml, so the prefix and the file name under
 	// resources/ must agree. With a literal in each place, changing one and forgetting the
 	// other fails at startup with "config file with prefix not found" and nothing at compile
 	// time. One constant makes divergence structurally impossible.

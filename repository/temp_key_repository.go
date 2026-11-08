@@ -27,11 +27,11 @@ import (
 //
 // 用哨兵错误而不是直接返回业务错误码：仓储层不该知道 gRPC status，
 // 否则它就没法被非 gRPC 的调用方（迁移脚本、运维命令）复用。
-// 服务层负责把这些错误翻译成 go-bizerror 的码。
+// 服务层负责把这些错误翻译成 go-rpc-gateway/errors 的码。
 //
 // [EN] Sentinel errors rather than business codes, because the repository should not know about
 // gRPC status or it cannot be reused by non-gRPC callers such as migration scripts or ops
-// commands. The service layer translates these into go-bizerror codes.
+// commands. The service layer translates these into go-rpc-gateway/errors codes.
 var (
 	// ErrScenarioRequired 未传有效场景
 	ErrScenarioRequired = errors.New("temp key scenario is required")
